@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Feature engineering on top of the raw analysis DataFrame.
 Adds binned probabilities, log-odds, and market metadata features.

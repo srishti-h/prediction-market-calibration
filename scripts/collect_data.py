@@ -26,6 +26,7 @@ def main():
     parser = argparse.ArgumentParser(description="Collect prediction market data")
     parser.add_argument("--markets", type=int, default=2000, help="Number of markets to fetch from Polymarket")
     parser.add_argument("--kalshi", action="store_true", help="Also scrape Kalshi (requires .env credentials)")
+    parser.add_argument("--kalshi-only", action="store_true", help="Skip Polymarket, only scrape Kalshi")
     parser.add_argument("--db", default=os.getenv("DB_PATH", "data/markets.duckdb"), help="Path to DuckDB file")
     args = parser.parse_args()
 
@@ -33,14 +34,15 @@ def main():
     conn = get_conn(args.db)
 
     # Polymarket
-    logger.info("=== Polymarket ===")
-    pm_markets, pm_prices, pm_snapshots = polymarket.scrape(n_markets=args.markets)
-    insert_markets(conn, pm_markets)
-    insert_prices(conn, pm_prices)
-    insert_snapshots(conn, pm_snapshots)
+    if not args.kalshi_only:
+        logger.info("=== Polymarket ===")
+        pm_markets, pm_prices, pm_snapshots = polymarket.scrape(n_markets=args.markets)
+        insert_markets(conn, pm_markets)
+        insert_prices(conn, pm_prices)
+        insert_snapshots(conn, pm_snapshots)
 
     # Kalshi (optional)
-    if args.kalshi:
+    if args.kalshi or args.kalshi_only:
         logger.info("=== Kalshi ===")
         email = os.getenv("KALSHI_EMAIL")
         password = os.getenv("KALSHI_PASSWORD")

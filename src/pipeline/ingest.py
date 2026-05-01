@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 DuckDB ingestion layer. Manages schema creation and bulk inserts.
 """

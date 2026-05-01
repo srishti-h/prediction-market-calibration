@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Calibration analysis: reliability diagrams, ECE, Brier score.
 """

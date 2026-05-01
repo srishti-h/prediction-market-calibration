@@ -6,12 +6,15 @@ An empirical analysis of calibration, bias, and efficiency in binary prediction 
 
 | Metric | Value |
 |--------|-------|
-| Overall ECE (T-24h) | Run analysis to populate |
-| Favorite-Longshot Bias | Run analysis to populate |
-| Best-calibrated category | Run analysis to populate |
-| AUC improvement T-168h→T-1h | Run analysis to populate |
-
-> **Update this table** after running `scripts/run_analysis.py`
+| Overall ECE (T-24h) | 0.116 |
+| Brier Score | 0.201 |
+| Logistic slope | 1.40 (underconfident) |
+| Favorite bias | +13.1pp (actual 91.3% vs predicted 78.2%, p=0.026) |
+| Contested bias | −7.8pp (actual 41.9% vs predicted 49.7%, p=0.010) |
+| AUC at T-168h | 0.620 |
+| AUC at T-72h | 0.891 (most info priced in between 7→3 days before close) |
+| Liquidity-calibration r | −0.179 (p=0.0006) — higher volume = better calibrated |
+| Markets analyzed | 1,984 resolved binary markets |
 
 ## Research Questions
 

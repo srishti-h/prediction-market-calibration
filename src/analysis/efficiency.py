@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Market efficiency analysis: price drift, information incorporation, cross-source comparison.
 """

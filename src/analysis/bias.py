@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Bias analysis: favorite-longshot bias, overconfidence, and systematic mispricing.
 """
@@ -67,7 +69,7 @@ def logistic_calibration_curve(df: pd.DataFrame, prob_col: str = "predicted_prob
         "slope": round(float(slope), 4),
         "intercept_ci": [round(x, 4) for x in intercept_ci],
         "slope_ci": [round(x, 4) for x in slope_ci],
-        "slope_p_value": round(float(result.pvalues[1]), 4),
+        "slope_p_value": round(float(result.pvalues.iloc[1]), 4),
         "interpretation": _interpret_slope(slope),
     }
 

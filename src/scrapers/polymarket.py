@@ -2,6 +2,7 @@
 Polymarket scraper using the public Gamma API and CLOB API.
 No API key required for read access.
 """
+from __future__ import annotations
 
 import time
 import json
@@ -9,7 +10,10 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import requests
+import urllib3
 from loguru import logger
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 GAMMA_BASE = "https://gamma-api.polymarket.com"
 CLOB_BASE = "https://clob.polymarket.com"
@@ -17,7 +21,14 @@ CLOB_BASE = "https://clob.polymarket.com"
 SNAPSHOT_HOURS = [168, 72, 24, 1]  # hours before close to sample price
 
 SESSION = requests.Session()
-SESSION.headers.update({"User-Agent": "prediction-market-calibration/1.0"})
+SESSION.headers.update({
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Accept": "application/json",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Origin": "https://polymarket.com",
+    "Referer": "https://polymarket.com/",
+})
+SESSION.verify = False
 
 
 def _get(url: str, params: dict = None, retries: int = 3) -> dict | list:
@@ -46,6 +57,7 @@ def fetch_resolved_markets(limit: int = 500, max_pages: int = 40) -> list[dict]:
     logger.info("Fetching resolved Polymarket markets...")
     while len(markets) < limit:
         params = {
+            "active": "false",
             "closed": "true",
             "limit": page_size,
             "offset": offset,
@@ -76,10 +88,32 @@ def fetch_resolved_markets(limit: int = 500, max_pages: int = 40) -> list[dict]:
     return markets[:limit]
 
 
+_CATEGORY_KEYWORDS = {
+    "crypto": ["bitcoin", "btc", "eth", "ethereum", "crypto", "defi", "nft", "solana", "doge", "coin"],
+    "sports": ["nfl", "nba", "mlb", "nhl", "soccer", "tennis", "ufc", "boxing", "esport", "cs2", "league-of", "dota", "football", "basketball", "baseball"],
+    "politics": ["election", "president", "congress", "senate", "trump", "biden", "harris", "democrat", "republican", "vote", "poll"],
+    "economics": ["fed", "inflation", "gdp", "unemployment", "interest-rate", "recession", "jobs", "cpi"],
+    "entertainment": ["oscar", "grammy", "emmy", "movie", "celebrity", "award", "netflix"],
+}
+
+
+def _infer_category(raw: dict) -> str:
+    text = " ".join([
+        raw.get("slug", ""),
+        raw.get("question", ""),
+        *[e.get("slug", "") + " " + e.get("ticker", "") for e in (raw.get("events") or [])],
+    ]).lower()
+    for category, keywords in _CATEGORY_KEYWORDS.items():
+        if any(kw in text for kw in keywords):
+            return category
+    return "other"
+
+
 def parse_market(raw: dict) -> Optional[dict]:
     """
     Parse a raw Gamma API market dict into a clean record.
-    Returns None if market is not a binary YES/NO market or lacks resolution.
+    Works with any binary market (YES/NO, Over/Under, Team A/Team B).
+    Treats outcome[0] as the reference outcome; outcomePrices[0] == "1" means it won.
     """
     try:
         outcomes_raw = raw.get("outcomes", "[]")
@@ -92,45 +126,35 @@ def parse_market(raw: dict) -> Optional[dict]:
         if not prices or len(prices) != 2:
             return None
 
-        outcome_labels = [o.upper() for o in outcomes]
-        if "YES" not in outcome_labels:
-            return None
+        closing_price = float(prices[0])  # price of outcome[0]
 
-        yes_idx = outcome_labels.index("YES")
-        closing_price = float(prices[yes_idx])
-
-        # Infer resolution from winner field or outcome prices
-        winner = raw.get("winner", "")
-        if winner:
-            resolution = "YES" if winner.upper() == "YES" else "NO"
-        elif closing_price >= 0.99:
+        # Infer resolution from closing price
+        if closing_price >= 0.99:
             resolution = "YES"
         elif closing_price <= 0.01:
             resolution = "NO"
         else:
-            return None  # ambiguous resolution
+            return None  # not resolved or ambiguous
 
-        end_date = raw.get("endDate") or raw.get("end_date_iso")
+        end_date = raw.get("endDateIso") or raw.get("endDate")
         if not end_date:
             return None
 
-        tokens_raw = raw.get("tokens", [])
-        yes_token_id = None
-        for t in tokens_raw:
-            if t.get("outcome", "").upper() == "YES":
-                yes_token_id = t.get("token_id")
-                break
+        # clobTokenIds is a JSON array string; index 0 = outcome[0] token
+        token_ids_raw = raw.get("clobTokenIds", "[]")
+        token_ids = json.loads(token_ids_raw) if isinstance(token_ids_raw, str) else (token_ids_raw or [])
+        yes_token_id = token_ids[0] if token_ids else None
 
         return {
             "id": str(raw["id"]),
             "condition_id": raw.get("conditionId", ""),
             "question": raw.get("question", ""),
-            "category": (raw.get("category") or "uncategorized").lower(),
-            "end_date": end_date,
+            "category": _infer_category(raw),
+            "end_date": str(end_date),
             "resolution": resolution,
             "closing_price": closing_price,
-            "volume": float(raw.get("volume", 0) or 0),
-            "liquidity": float(raw.get("liquidity", 0) or 0),
+            "volume": float(raw.get("volumeClob") or raw.get("volume") or 0),
+            "liquidity": float(raw.get("liquidityClob") or raw.get("liquidity") or 0),
             "yes_token_id": yes_token_id,
             "source": "polymarket",
         }

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Publication-quality plots for calibration analysis.
 All functions save to outputs/figures/ and return the figure path.

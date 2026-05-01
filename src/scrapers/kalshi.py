@@ -2,17 +2,22 @@
 Kalshi scraper using the public v2 trading API.
 Requires free account credentials for some endpoints; anonymous access for others.
 """
+from __future__ import annotations
 
 import time
 from typing import Optional
 
 import requests
+import urllib3
 from loguru import logger
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 BASE = "https://trading-api.kalshi.com/trade-api/v2"
 
 SESSION = requests.Session()
 SESSION.headers.update({"Content-Type": "application/json"})
+SESSION.verify = False
 
 
 def login(email: str, password: str) -> bool:
