@@ -6,15 +6,18 @@ An empirical analysis of calibration, bias, and efficiency in binary prediction 
 
 | Metric | Value |
 |--------|-------|
-| Overall ECE (T-24h) | 0.116 |
-| Brier Score | 0.201 |
-| Logistic slope | 1.40 (underconfident) |
-| Favorite bias | +13.1pp (actual 91.3% vs predicted 78.2%, p=0.026) |
-| Contested bias | −7.8pp (actual 41.9% vs predicted 49.7%, p=0.010) |
-| AUC at T-168h | 0.620 |
-| AUC at T-72h | 0.891 (most info priced in between 7→3 days before close) |
-| Liquidity-calibration r | −0.179 (p=0.0006) — higher volume = better calibrated |
-| Markets analyzed | 1,984 resolved binary markets |
+| Markets analyzed | 3,960 resolved binary markets, 108K+ price records |
+| Overall ECE (T-24h) | 0.095 |
+| Brier Score | 0.193 |
+| Logistic slope | 1.33 (underconfident — prices too moderate) |
+| Crypto ECE | 0.052 (most efficient) |
+| Sports ECE | 0.260 (least efficient) |
+| Favorite bias | +12.6pp (actual 90.7% vs predicted 78.2%, p=0.0015) |
+| Contested bias | −6.7pp (actual 42.9% vs predicted 49.6%, p=0.0008) |
+| AUC at T-168h | 0.644 → T-72h 0.892 (price discovery window) |
+| Liquidity-calibration r | −0.172 (p≈0) — higher volume = better calibrated |
+| Isotonic recalibration ECE | 0.049 (−44% vs uncalibrated, 5-fold CV) |
+| Backtest ROI (quarter-Kelly, OOS) | +703% over 732 bets, Sharpe 5.30, max DD 7.1% |
 
 ## Research Questions
 
