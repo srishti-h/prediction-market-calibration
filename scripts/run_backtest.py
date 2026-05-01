@@ -150,10 +150,23 @@ def main():
     plot_recalibration_comparison(rel_df, f"{FIGURES}/recalibration_comparison.png")
     logger.info("Saved recalibration_comparison.png")
 
-    # ── Add recalibrated probs to df for backtesting ──────────────────────────
+    # ── Out-of-sample recalibrated probs via KFold ───────────────────────────
+    # Fit isotonic on train folds, predict on test fold — avoids lookahead bias
+    from sklearn.model_selection import KFold
     from src.analysis.recalibration import fit_isotonic
-    ir = fit_isotonic(df)
-    df["recalibrated_prob"] = ir.predict(df["predicted_prob"].values)
+
+    logger.info("Generating out-of-sample recalibrated probabilities (5-fold)...")
+    oos_probs = np.zeros(len(df))
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+    X = df["predicted_prob"].values
+    y = df["outcome"].values
+    for train_idx, test_idx in kf.split(X):
+        train_df = df.iloc[train_idx]
+        ir = fit_isotonic(train_df)
+        oos_probs[test_idx] = ir.predict(X[test_idx])
+    df = df.copy()
+    df["recalibrated_prob"] = oos_probs
+    logger.info(f"OOS recalibration complete. Mean prob shift: {(oos_probs - X).mean():+.4f}")
 
     # ── Backtesting ───────────────────────────────────────────────────────────
     logger.info(f"\nRunning backtest: strategy={args.strategy}, min_edge={args.min_edge}")

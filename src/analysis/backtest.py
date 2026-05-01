@@ -39,7 +39,7 @@ def run_backtest(
     strategy: str = "quarter_kelly",
     min_edge: float = 0.03,
     initial_bankroll: float = 1000.0,
-    max_bet_fraction: float = 0.10,
+    max_bet_fraction: float = 0.05,
 ) -> tuple[pd.DataFrame, dict]:
     """
     Simulate a betting strategy on the dataset.
@@ -51,7 +51,8 @@ def run_backtest(
       'flat'          — fixed 2% of initial bankroll per bet
 
     min_edge: minimum probability edge required to place a bet
-    max_bet_fraction: cap bet at this fraction of current bankroll
+    max_bet_fraction: cap bet at this fraction of INITIAL bankroll (not current)
+                      to prevent compounding runaway in favorable environments.
 
     Returns (trade_log DataFrame, summary dict)
     """
@@ -60,6 +61,8 @@ def run_backtest(
 
     kelly_multiplier = {"kelly": 1.0, "quarter_kelly": 0.25, "half_kelly": 0.5}.get(strategy, 0.25)
     flat_bet = initial_bankroll * 0.02
+    # Cap relative to initial bankroll to avoid exponential compounding
+    max_bet = initial_bankroll * max_bet_fraction
 
     for _, row in df.iterrows():
         true_p = float(row[true_prob_col])
@@ -79,12 +82,12 @@ def run_backtest(
             continue
 
         if strategy == "flat":
-            bet_size = min(flat_bet, bankroll * max_bet_fraction)
+            bet_size = flat_bet
         else:
             kf = kelly_fraction(true_p, market_p, direction) * kelly_multiplier
-            bet_size = min(kf * bankroll, bankroll * max_bet_fraction)
+            bet_size = min(kf * initial_bankroll, max_bet)
 
-        bet_size = max(0.0, bet_size)
+        bet_size = max(0.0, min(bet_size, bankroll))
         if bet_size < 0.01:
             continue
 
